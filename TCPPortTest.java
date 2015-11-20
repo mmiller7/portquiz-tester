@@ -110,7 +110,7 @@ class TCPPortTest implements Runnable
 			if(x % 100 == 0 && !quiet)
 				System.out.print(".");
 			if(x % 200 == 0)
-				Thread.sleep(10000);
+				Thread.sleep(30000);
 		}
 	}
 
@@ -170,12 +170,12 @@ class TCPPortTest implements Runnable
 		
 		if(pass)
 		{
-			if(showPass)
+			if(showPass || debug)
 				System.out.println("PASS: "+portNum);
 		}
 		else
 		{
-			if(showFail)
+			if(showFail || debug)
 				System.out.println("FAIL: "+portNum);
 		}
 	}
