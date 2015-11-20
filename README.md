@@ -31,3 +31,10 @@ PASS: 80
 PASS: 80
 FAIL: 81
 FAIL: 82
+
+
+Troubleshooting:
+If you get an error "java.lang.ClassNotFoundException", you may need to specify the Java "class path".  Use the `cd` command to navigate to the folder where the TCPPortTest file is, and try this command:
+ java -cp . TCPPortTest
+ This will explicitly tell Java to use the current directory "." to look for the program to run.
+ 
