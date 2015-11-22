@@ -63,6 +63,7 @@ class TCPPortTest implements Runnable
 			}
 			if(argv[x].equals("-vv"))
 			{
+				verbose=true;
 				debug=true;
 			}
 			if(argv[x].contains("-host="))
@@ -121,10 +122,13 @@ class TCPPortTest implements Runnable
 				System.out.print("["+numRunning+"x]");
 			if(x % 200 == 0)
 			{
-				if(numRunning > 10)
-					Thread.sleep(2*TIMEOUT);
-				else
-					Thread.sleep(TIMEOUT);
+				if(numRunning != 0)
+				{
+					if(numRunning > 10)
+						Thread.sleep(2*TIMEOUT);
+					else
+						Thread.sleep(TIMEOUT);
+				}
 			}
 		}
 	}
@@ -135,6 +139,7 @@ class TCPPortTest implements Runnable
 		boolean connect=false;
 		boolean pass=false;
 		boolean reply=true;
+		String firstLine = ""; //so we can check if it bails fast
 		try
 		{
 			String modifiedSentence;
@@ -150,17 +155,12 @@ class TCPPortTest implements Runnable
 									"\n\n");
 			BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 			modifiedSentence = inFromServer.readLine();
-			
-			//sending QUIT speeds up exit of SMTP and FTP, no need for timeout
-			//we do this here so that, by this time, we have already got any HTTP response.
-			if(!modifiedSentence.contains("HTTP/1.1 200 OK"))
-			{
-				outToServer.writeBytes("QUIT\n");
-			}
+			firstLine = modifiedSentence;
 			
 			if(debug)
 				System.out.println("---------- DEBUG: BEGIN SERVER REPLY ----------");
 				
+			boolean quitSent=false;
 			while(modifiedSentence != null)
 			{
 				reply=true;
@@ -169,14 +169,27 @@ class TCPPortTest implements Runnable
 
 				if(
 						modifiedSentence.contains("Outgoing Port Tester") || //Webserver
-						(modifiedSentence.contains("220") && modifiedSentence.contains("FTP")) || //FTP server
+						modifiedSentence.contains("FTP") || //FTP server
 						modifiedSentence.contains("SSH") || //SSH server
-						(modifiedSentence.contains("220") && modifiedSentence.contains("SMTP")) || //SMTP server
+						modifiedSentence.contains("SMTP") || //SMTP server
 						modifiedSentence.contains("HTTP to an SSL-enabled server") //HTTPS
 					)
 				{
 					pass=true;
 				}
+				
+				if(!quitSent)
+				{
+					//sending QUIT speeds up exit of SMTP and FTP, no need for timeout
+					//we do this here so that, by this time, we have already got any HTTP response.
+					if(!modifiedSentence.contains("HTTP/1.1 200 OK"))
+					{
+						System.out.println("DEBUG: Not HTTP, sending QUIT command to server.");
+						outToServer.writeBytes("QUIT\n");
+					}
+					quitSent=true;
+				}
+				
 				modifiedSentence = inFromServer.readLine();
 			}
 
@@ -186,7 +199,14 @@ class TCPPortTest implements Runnable
 			clientSocket.close();
 			//System.out.println("Finished port "+portNum);
 		}
-		catch(Exception e) {};
+		catch(Exception e)
+		{
+			if(debug)
+			{
+				System.out.println("Connection terminated unexpectedly due to exception.");
+				e.printStackTrace(System.out);
+			}
+		};
 		
 		if(pass)
 		{
@@ -200,7 +220,12 @@ class TCPPortTest implements Runnable
 				if(connect)
 				{
 					if(reply)
-						System.out.println("FAIL_UNKNOWN_RESPONSE: "+portNum);
+					{
+						if(verbose)
+							System.out.println("FAIL_UNKNOWN_RESPONSE: "+portNum+" with server response starting \""+firstLine+"\"");
+						else
+							System.out.println("FAIL_UNKNOWN_RESPONSE: "+portNum);
+					}
 					else
 						System.out.println("FAIL_NO_RESPONSE: "+portNum);
 				}
