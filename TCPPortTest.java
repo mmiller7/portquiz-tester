@@ -14,18 +14,21 @@ import java.net.*;
 class TCPPortTest implements Runnable
 {
 	int portNum=1;
+	static int numRunning=0;
 
 	TCPPortTest(int x)
 	{
 		this.portNum=x;
 	}
 	
+	static int TIMEOUT=30000;
 	static String host="portquiz.net";
 	static boolean showFail=false;
 	static boolean showPass=true;
 	static boolean showHelp=false;
 	static boolean quiet=false;
 	static boolean debug=false;
+	static boolean verbose=false;
 	
 	public static void main(String argv[]) throws Exception
 	{
@@ -55,6 +58,10 @@ class TCPPortTest implements Runnable
 				quiet=true;
 			}
 			if(argv[x].equals("-v"))
+			{
+				verbose=true;
+			}
+			if(argv[x].equals("-vv"))
 			{
 				debug=true;
 			}
@@ -92,7 +99,8 @@ class TCPPortTest implements Runnable
 			System.out.println("-h       Show usage help");
 			System.out.println("-host=   Specify host address (e.g. if DNS fails set portquiz.net IP)");			
 			System.out.println("-q       Quiet - does not print dots, useful for scripting");
-			System.out.println("-v       Verbose - prints full server replies (I suggest only do 1 port!)");
+			System.out.println("-v       Verbose - prints extra metrics");
+			System.out.println("-vv      Very Verbose - prints full server replies (I suggest only do 1 port!)");
 			System.out.println();
 			System.out.println("This program scans 1 or more TCP ports asynchroniously and prints");
 			System.out.println("the results as PASS (connected and received expected reply) or");
@@ -109,20 +117,31 @@ class TCPPortTest implements Runnable
 			Thread.sleep(100);
 			if(x % 100 == 0 && !quiet)
 				System.out.print(".");
+			if(x % 100 == 0 && verbose)
+				System.out.print("["+numRunning+"x]");
 			if(x % 200 == 0)
-				Thread.sleep(30000);
+			{
+				if(numRunning > 10)
+					Thread.sleep(2*TIMEOUT);
+				else
+					Thread.sleep(TIMEOUT);
+			}
 		}
 	}
 
 	public void run()
 	{
+		numRunning++;
+		boolean connect=false;
 		boolean pass=false;
+		boolean reply=true;
 		try
 		{
 			String modifiedSentence;
 			//Socket clientSocket = new Socket("portquiz.net", portNum);
 			Socket clientSocket = new Socket();
-			clientSocket.connect(new InetSocketAddress(host, portNum), 30000);
+			clientSocket.connect(new InetSocketAddress(host, portNum), TIMEOUT);
+			connect = clientSocket.isConnected();
 			DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
 			//outToServer.writeBytes("\n");
 			outToServer.writeBytes( "GET / HTTP/1.1\n"+
@@ -144,6 +163,7 @@ class TCPPortTest implements Runnable
 				
 			while(modifiedSentence != null)
 			{
+				reply=true;
 				if(debug)
 					System.out.println(modifiedSentence);
 
@@ -176,7 +196,20 @@ class TCPPortTest implements Runnable
 		else
 		{
 			if(showFail || debug)
-				System.out.println("FAIL: "+portNum);
+			{
+				if(connect)
+				{
+					if(reply)
+						System.out.println("FAIL_UNKNOWN_RESPONSE: "+portNum);
+					else
+						System.out.println("FAIL_NO_RESPONSE: "+portNum);
+				}
+				else
+				{
+					System.out.println("FAIL: "+portNum);
+				}
+			}
 		}
+		numRunning--;
 	}
 }
