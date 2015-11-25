@@ -184,7 +184,8 @@ class TCPPortTest implements Runnable
 					//we do this here so that, by this time, we have already got any HTTP response.
 					if(!modifiedSentence.contains("HTTP/1.1 200 OK"))
 					{
-						System.out.println("DEBUG: Not HTTP, sending QUIT command to server.");
+						if(debug)
+							System.out.println("DEBUG: Not HTTP, sending QUIT command to server.");
 						outToServer.writeBytes("QUIT\n");
 					}
 					quitSent=true;
