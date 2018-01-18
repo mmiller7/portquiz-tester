@@ -149,10 +149,10 @@ class TCPPortTest implements Runnable
 			connect = clientSocket.isConnected();
 			DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
 			//outToServer.writeBytes("\n");
-			outToServer.writeBytes( "GET / HTTP/1.1\n"+
-									"Host: portquiz.net\n"+
-									"Connection: close\n"+ //speeds up HTTP close, no need for long timeout wait
-									"\n\n");
+			outToServer.writeBytes( "GET / HTTP/1.0\r\n"+
+									"Host: portquiz.net\r\n"+
+									"Connection: close\r\n"+ //speeds up HTTP close, no need for long timeout wait
+									"\r\n\r\n");
 			BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 			modifiedSentence = inFromServer.readLine();
 			firstLine = modifiedSentence;
